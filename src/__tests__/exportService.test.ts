@@ -36,8 +36,8 @@ describe('exportService — sin llamadas de red', () => {
     c.width = w
     c.height = h
     // jsdom no implementa canvas 2D completo; moqueamos los métodos que usan los servicios
-    c.getContext = (_type: string) => null as unknown as CanvasRenderingContext2D
-    c.toDataURL = (_type?: string) => 'data:image/jpeg;base64,/9j/fakedata'
+    c.getContext = () => null as unknown as CanvasRenderingContext2D
+    c.toDataURL = () => 'data:image/jpeg;base64,/9j/fakedata'
     c.toBlob = (callback: BlobCallback) => {
       callback(new Blob(['fake'], { type: 'image/png' }))
     }

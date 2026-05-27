@@ -14,7 +14,7 @@ const RE_DNI = /\b\d{8}[A-Z]\b/i
 const RE_NIE = /\b[XYZ]\d{7}[A-Z]\b/i
 // Fechas: DD/MM/AAAA, DD-MM-AAAA, DD.MM.AAAA, DD MM AAAA o con mes en texto (ENE, FEB…)
 const RE_DATE =
-  /\b\d{1,2}[\s./\-]\d{1,2}[\s./\-]\d{2,4}\b|\b\d{2}\s+(?:ENE|FEB|MAR|ABR|MAY|JUN|JUL|AGO|SEP|OCT|NOV|DIC)\s+\d{4}\b/i
+  /\b\d{1,2}[\s./-]\d{1,2}[\s./-]\d{2,4}\b|\b\d{2}\s+(?:ENE|FEB|MAR|ABR|MAY|JUN|JUL|AGO|SEP|OCT|NOV|DIC)\s+\d{4}\b/i
 // CAN: exactamente 6 dígitos (código de acceso de la tarjeta)
 const RE_CAN = /^\d{6}$/
 // Línea MRZ: 20+ caracteres de A-Z, 0-9 y < (fuente OCR-B)

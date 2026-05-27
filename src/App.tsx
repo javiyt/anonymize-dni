@@ -86,7 +86,7 @@ export default function App() {
     const map = new Map<number, typeof redactions.redactions>()
     map.set(currentPage, redactions.redactions)
     await exportDocument(format, pageCanvases, currentPage, map, watermarkConfig, grayscale)
-  }, [pageCanvases, currentPage, redactions.redactions, watermarkConfig, grayscale])
+  }, [pageCanvases, currentPage, redactions, watermarkConfig, grayscale])
 
   const handleClear = useCallback(() => {
     setPageCanvases([])
