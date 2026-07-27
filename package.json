@@ -16,8 +16,8 @@
     "file-saver": "^2.0.5",
     "jspdf": "^4.2.1",
     "pdfjs-dist": "^5.7.284",
-    "react": "^19.2.7",
-    "react-dom": "^19.2.7",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
     "tesseract.js": "^7.0.0"
   },
   "devDependencies": {
