@@ -41,6 +41,11 @@ export type ToolMode = 'redact-black' | 'redact-pixel' | 'redact-blur' | 'pan'
 // Formato de exportación
 export type ExportFormat = 'pdf' | 'png' | 'jpg'
 
+export interface ExportOptions {
+  scalePercent: number
+  layout: 'together' | 'separate'
+}
+
 // Paso actual en el flujo de la aplicación
 export type AppStep = 'home' | 'upload' | 'editor' | 'export'
 

@@ -1,5 +1,5 @@
-import { useCallback, useState } from 'react'
-import type { AppStep, ExportFormat, OcrSuggestion, Preset, ToolMode, WatermarkConfig } from './domain/documentTypes'
+import { useCallback, useRef, useState } from 'react'
+import type { AppStep, ExportFormat, ExportOptions, OcrSuggestion, Preset, ToolMode, WatermarkConfig } from './domain/documentTypes'
 import { defaultWatermarkConfig } from './domain/watermark'
 import { useRedactions } from './hooks/useRedactions'
 import { readFileAsArrayBuffer, loadImageToCanvas } from './services/imageLoader'
@@ -40,41 +40,47 @@ export default function App() {
   const [ocrProgress, setOcrProgress] = useState(0)
   const [ocrError, setOcrError] = useState<string | null>(null)
 
-  const redactions = useRedactions()
+  const redactions = useRedactions(currentPage)
+  const ocrRequest = useRef(0)
+  const loadRequest = useRef(0)
 
-  const handleFileSelected = useCallback(async (file: File) => {
+  const handleFilesSelected = useCallback(async (files: File[]) => {
+    const request = ++loadRequest.current
     setLoadingState('loading')
     setLoadingProgress(0)
     setLoadError(null)
     try {
-      let canvases: HTMLCanvasElement[]
-      if (file.type === 'application/pdf') {
-        const buffer = await readFileAsArrayBuffer(file)
-        const result = await renderPdfToCanvases(buffer, (current, total) => {
-          setLoadingProgress(Math.round((current / total) * 100))
-        })
-        canvases = result.canvases
-      } else {
-        const canvas = await loadImageToCanvas(file)
-        canvases = [canvas]
+      const canvases: HTMLCanvasElement[] = []
+      for (const [index, file] of files.entries()) {
+        if (file.type === 'application/pdf') {
+          const buffer = await readFileAsArrayBuffer(file)
+          const result = await renderPdfToCanvases(buffer)
+          canvases.push(...result.canvases)
+        } else {
+          canvases.push(await loadImageToCanvas(file))
+        }
+        if (request !== loadRequest.current) return
+        setLoadingProgress(Math.round(((index + 1) / files.length) * 100))
       }
-      setPageCanvases(canvases)
-      setCurrentPage(0)
-      redactions.clearAll()
+      if (canvases.length === 0) throw new Error('Documento vacío')
+      setPageCanvases((previous) => [...previous, ...canvases])
       setLoadingState('idle')
       setStep('editor')
     } catch (err) {
       console.error(err)
+      if (request !== loadRequest.current) return
       setLoadError('No se pudo cargar el documento. Comprueba que el archivo no está dañado.')
       setLoadingState('error')
     }
-  }, [redactions])
+  }, [])
 
   const handlePageChange = useCallback((page: number) => {
     setCurrentPage(page)
-    redactions.clearAll()
+    ocrRequest.current++
+    setOcrLoading(false)
+    setOcrError(null)
     setOcrSuggestions([])
-  }, [redactions])
+  }, [])
 
   const handlePresetSelect = useCallback((preset: Preset) => {
     setActivePresetId(preset.id)
@@ -82,19 +88,19 @@ export default function App() {
     setWatermarkConfig((prev) => ({ ...prev, purpose: preset.watermarkPurpose }))
   }, [])
 
-  const handleExport = useCallback(async (format: ExportFormat) => {
-    const map = new Map<number, typeof redactions.redactions>()
-    map.set(currentPage, redactions.redactions)
-    await exportDocument(format, pageCanvases, currentPage, map, watermarkConfig, grayscale)
+  const handleExport = useCallback(async (format: ExportFormat, options: ExportOptions) => {
+    await exportDocument(format, pageCanvases, currentPage, redactions.redactionsPerPage, watermarkConfig, grayscale, options)
   }, [pageCanvases, currentPage, redactions, watermarkConfig, grayscale])
 
   const handleClear = useCallback(() => {
+    loadRequest.current++
     setPageCanvases([])
     setCurrentPage(0)
     setLoadingState('idle')
     setLoadError(null)
     setLoadingProgress(0)
-    redactions.clearAll()
+    redactions.reset()
+    ocrRequest.current++
     setGrayscale(true)
     setWatermarkConfig(defaultWatermarkConfig)
     setActivePresetId(null)
@@ -115,19 +121,24 @@ export default function App() {
   const handleDetectZones = useCallback(async () => {
     const canvas = pageCanvases[currentPage]
     if (!canvas) return
+    const request = ++ocrRequest.current
     setOcrLoading(true)
     setOcrProgress(0)
     setOcrError(null)
     setOcrSuggestions([])
     try {
-      const found = await detectSensitiveZones(canvas, setOcrProgress)
+      const found = await detectSensitiveZones(canvas, (progress) => {
+        if (request === ocrRequest.current) setOcrProgress(progress)
+      })
+      if (request !== ocrRequest.current) return
       setOcrSuggestions(found)
       if (found.length === 0) setOcrError('No se detectaron zonas sensibles. Revisa el documento manualmente.')
     } catch (err) {
       console.error(err)
+      if (request !== ocrRequest.current) return
       setOcrError('Error al analizar el documento. Comprueba la conexión (primera vez requiere ~4 MB).')
     } finally {
-      setOcrLoading(false)
+      if (request === ocrRequest.current) setOcrLoading(false)
     }
   }, [pageCanvases, currentPage])
 
@@ -171,7 +182,7 @@ export default function App() {
         {step === 'upload' && (
           <div className="step-upload">
             <h2>Sube tu documento</h2>
-            <FileUploader onFileSelected={handleFileSelected} />
+            <FileUploader onFilesSelected={handleFilesSelected} disabled={loadingState === 'loading'} />
             {loadingState === 'loading' && (
               <div className="loading-indicator" role="status" aria-live="polite">
                 <div className="loading-bar-track">
@@ -179,7 +190,7 @@ export default function App() {
                     role="progressbar" aria-valuenow={loadingProgress}
                     aria-valuemin={0} aria-valuemax={100} />
                 </div>
-                <p>Renderizando páginas… {loadingProgress}%</p>
+                <p>Cargando caras y páginas… {loadingProgress}%</p>
               </div>
             )}
             {loadError && (
@@ -225,11 +236,18 @@ export default function App() {
                 <WatermarkPanel config={watermarkConfig} onChange={setWatermarkConfig} />
                 <ExportPanel
                   totalPages={pageCanvases.length}
+                  pageSizes={pageCanvases.map((canvas) => ({ width: canvas.width, height: canvas.height }))}
                   onExport={handleExport}
                   onClear={handleClear}
                 />
               </aside>
               <div className="editor-canvas-area">
+                <section className="add-document" aria-label="Añadir caras del documento">
+                  <h3>Añadir otra cara o documento</h3>
+                  <FileUploader onFilesSelected={handleFilesSelected} disabled={loadingState === 'loading'} />
+                  {loadingState === 'loading' && <p role="status">Cargando… {loadingProgress}%</p>}
+                  {loadError && <p className="error-message" role="alert">{loadError}</p>}
+                </section>
                 <PageNavigator currentPage={currentPage} totalPages={pageCanvases.length}
                   onPageChange={handlePageChange} />
                 <DocumentPreview

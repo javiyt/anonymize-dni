@@ -13,47 +13,66 @@ function uploadFile(file: File) {
 }
 
 describe('FileUploader', () => {
-  it('llama a onFileSelected con un PDF válido', () => {
-    const onFileSelected = vi.fn()
-    render(<FileUploader onFileSelected={onFileSelected} />)
+  it('llama a onFilesSelected con un PDF válido', () => {
+    const onFilesSelected = vi.fn()
+    render(<FileUploader onFilesSelected={onFilesSelected} />)
     uploadFile(makeFile('documento.pdf', 'application/pdf'))
-    expect(onFileSelected).toHaveBeenCalledOnce()
+    expect(onFilesSelected).toHaveBeenCalledOnce()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
-  it('llama a onFileSelected con una imagen JPEG', () => {
-    const onFileSelected = vi.fn()
-    render(<FileUploader onFileSelected={onFileSelected} />)
+  it('llama a onFilesSelected con una imagen JPEG', () => {
+    const onFilesSelected = vi.fn()
+    render(<FileUploader onFilesSelected={onFilesSelected} />)
     uploadFile(makeFile('foto.jpg', 'image/jpeg'))
-    expect(onFileSelected).toHaveBeenCalledOnce()
+    expect(onFilesSelected).toHaveBeenCalledOnce()
   })
 
-  it('llama a onFileSelected con una imagen PNG', () => {
-    const onFileSelected = vi.fn()
-    render(<FileUploader onFileSelected={onFileSelected} />)
+  it('llama a onFilesSelected con una imagen PNG', () => {
+    const onFilesSelected = vi.fn()
+    render(<FileUploader onFilesSelected={onFilesSelected} />)
     uploadFile(makeFile('escaneado.png', 'image/png'))
-    expect(onFileSelected).toHaveBeenCalledOnce()
+    expect(onFilesSelected).toHaveBeenCalledOnce()
+  })
+
+  it('carga ambas caras seleccionadas en su orden', () => {
+    const onFilesSelected = vi.fn()
+    render(<FileUploader onFilesSelected={onFilesSelected} />)
+    const files = [makeFile('anverso.jpg', 'image/jpeg'), makeFile('reverso.png', 'image/png')]
+    fireEvent.change(screen.getByLabelText(/seleccionar archivo de dni/i), { target: { files } })
+    expect(onFilesSelected).toHaveBeenCalledWith(files)
+  })
+
+  it('valida todos los archivos antes de cargar y admite arrastrar ambas caras', () => {
+    const onFilesSelected = vi.fn()
+    render(<FileUploader onFilesSelected={onFilesSelected} />)
+    const zone = screen.getByRole('button')
+    fireEvent.drop(zone, { dataTransfer: { files: [makeFile('front.png', 'image/png'), makeFile('bad.txt', 'text/plain')] } })
+    expect(onFilesSelected).not.toHaveBeenCalled()
+    const files = [makeFile('front.png', 'image/png'), makeFile('back.png', 'image/png')]
+    fireEvent.drop(zone, { dataTransfer: { files } })
+    expect(onFilesSelected).toHaveBeenCalledWith(files)
   })
 
   it('rechaza formatos no admitidos (DOCX) y muestra error', () => {
-    const onFileSelected = vi.fn()
-    render(<FileUploader onFileSelected={onFileSelected} />)
+    const onFilesSelected = vi.fn()
+    render(<FileUploader onFilesSelected={onFilesSelected} />)
     uploadFile(
       makeFile(
         'documento.docx',
         'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       ),
     )
-    expect(onFileSelected).not.toHaveBeenCalled()
+    expect(onFilesSelected).not.toHaveBeenCalled()
     expect(screen.getByRole('alert')).toBeInTheDocument()
     expect(screen.getByRole('alert')).toHaveTextContent(/formato no admitido/i)
   })
 
   it('rechaza archivos que superen 20 MB', () => {
-    const onFileSelected = vi.fn()
-    render(<FileUploader onFileSelected={onFileSelected} />)
+    const onFilesSelected = vi.fn()
+    render(<FileUploader onFilesSelected={onFilesSelected} />)
     uploadFile(makeFile('grande.pdf', 'application/pdf', 21 * 1024 * 1024))
-    expect(onFileSelected).not.toHaveBeenCalled()
+    expect(onFilesSelected).not.toHaveBeenCalled()
     expect(screen.getByRole('alert')).toHaveTextContent(/20 mb/i)
   })
 })

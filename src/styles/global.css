@@ -876,3 +876,13 @@
     padding: 2rem 1rem;
   }
 }
+
+.add-document {
+  width: 100%;
+  margin-bottom: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--color-border, #ddd);
+  border-radius: 8px;
+}
+.add-document h3 { margin: 0 0 0.75rem; }
+.add-document .drop-zone { padding: 1rem; }
