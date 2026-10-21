@@ -19,11 +19,12 @@ Las recomendaciones de la **AEPD** y el **INCIBE** indican que se deben tomar me
 
 ## ¿Qué hace esta herramienta?
 
-1. Carga el documento localmente (PDF, JPG o PNG) sin enviarlo a ningún servidor.
+1. Carga ambas caras del documento (PDF, JPG o PNG), a la vez o una a una, sin enviarlas a ningún servidor.
 2. Permite ocultar zonas sensibles (caja negra, pixelado, difuminado).
 3. Convierte a blanco y negro.
 4. Añade marca de agua con finalidad, destinatario y fecha.
-5. Exporta como PDF, PNG o JPG.
+5. Exporta todas las caras como PDF, PNG o JPG: juntas en una página/imagen o por separado, con tamaño ajustable del 10 % al 300 %. Cada cara conserva sus ocultaciones y su historial al navegar.
+   En modo separado, las imágenes se descargan en archivos numerados; el navegador puede pedir permiso para varias descargas. El PDF contiene una página por cara. El tamaño se aplica a las dimensiones originales en píxeles y es independiente del zoom.
 6. Borra todo de memoria al terminar.
 
 ---

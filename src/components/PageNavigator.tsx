@@ -8,7 +8,7 @@ export function PageNavigator({ currentPage, totalPages, onPageChange }: PageNav
   if (totalPages <= 1) return null
 
   return (
-    <nav className="page-navigator" aria-label="Navegación de páginas del PDF">
+    <nav className="page-navigator" aria-label="Navegación de caras y páginas">
       <button
         className="btn btn-secondary btn-sm"
         onClick={() => onPageChange(currentPage - 1)}
@@ -18,7 +18,7 @@ export function PageNavigator({ currentPage, totalPages, onPageChange }: PageNav
         ◀ Anterior
       </button>
       <span className="page-navigator__info" aria-live="polite">
-        Página <strong>{currentPage + 1}</strong> de {totalPages}
+        Cara / página <strong>{currentPage + 1}</strong> de {totalPages}
       </span>
       <button
         className="btn btn-secondary btn-sm"

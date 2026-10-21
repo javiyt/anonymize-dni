@@ -2,74 +2,59 @@ import { useCallback, useState } from 'react'
 import type { Redaction, RedactionType } from '../domain/documentTypes'
 import { createRedaction, removeRedaction } from '../domain/redaction'
 
-interface UseRedactionsReturn {
-  redactions: Redaction[]
-  canUndo: boolean
-  canRedo: boolean
-  addRedaction: (type: RedactionType, x: number, y: number, w: number, h: number) => void
-  deleteRedaction: (id: string) => void
-  undo: () => void
-  redo: () => void
-  clearAll: () => void
+interface PageHistory {
+  snapshots: Redaction[][]
+  index: number
 }
+const emptyHistory: PageHistory = { snapshots: [[]], index: 0 }
 
-/**
- * Gestiona la lista de ocultaciones con historial de deshacer/rehacer.
- */
-export function useRedactions(): UseRedactionsReturn {
-  // Historial: array de snapshots de la lista
-  const [history, setHistory] = useState<Redaction[][]>([[]])
-  const [historyIndex, setHistoryIndex] = useState(0)
+/** Cada cara conserva sus ocultaciones y su historial de deshacer/rehacer. */
+export function useRedactions(page = 0) {
+  const [pages, setPages] = useState<Record<number, PageHistory>>({})
+  const current = pages[page] ?? emptyHistory
+  const redactions = current.snapshots[current.index]
 
-  const redactions = history[historyIndex]
+  const commit = useCallback((update: (previous: Redaction[]) => Redaction[]) => {
+    setPages((previous) => {
+      const history = previous[page] ?? emptyHistory
+      return {
+        ...previous,
+        [page]: {
+          snapshots: [...history.snapshots.slice(0, history.index + 1), update(history.snapshots[history.index])],
+          index: history.index + 1,
+        },
+      }
+    })
+  }, [page])
 
-  const _commit = useCallback(
-    (next: Redaction[]) => {
-      setHistory((prev) => {
-        const truncated = prev.slice(0, historyIndex + 1)
-        return [...truncated, next]
-      })
-      setHistoryIndex((i) => i + 1)
-    },
-    [historyIndex],
-  )
-
-  const addRedaction = useCallback(
-    (type: RedactionType, x: number, y: number, w: number, h: number) => {
-      const r = createRedaction(type, x, y, w, h)
-      _commit([...redactions, r])
-    },
-    [redactions, _commit],
-  )
-
-  const deleteRedaction = useCallback(
-    (id: string) => {
-      _commit(removeRedaction(redactions, id))
-    },
-    [redactions, _commit],
-  )
-
-  const undo = useCallback(() => {
-    setHistoryIndex((i) => Math.max(0, i - 1))
-  }, [])
-
-  const redo = useCallback(() => {
-    setHistoryIndex((i) => Math.min(history.length - 1, i + 1))
-  }, [history.length])
-
+  const addRedaction = useCallback((type: RedactionType, x: number, y: number, w: number, h: number) => {
+    const redaction = createRedaction(type, x, y, w, h)
+    commit((previous) => [...previous, redaction])
+  }, [commit])
+  const deleteRedaction = useCallback((id: string) => {
+    commit((previous) => removeRedaction(previous, id))
+  }, [commit])
+  const moveHistory = useCallback((offset: number) => {
+    setPages((previous) => {
+      const history = previous[page] ?? emptyHistory
+      return { ...previous, [page]: { ...history, index: Math.max(0, Math.min(history.snapshots.length - 1, history.index + offset)) } }
+    })
+  }, [page])
   const clearAll = useCallback(() => {
-    setHistory([[]])
-    setHistoryIndex(0)
-  }, [])
+    setPages((previous) => ({ ...previous, [page]: emptyHistory }))
+  }, [page])
+  const reset = useCallback(() => setPages({}), [])
 
   return {
     redactions,
-    canUndo: historyIndex > 0,
-    canRedo: historyIndex < history.length - 1,
+    redactionsPerPage: new Map(Object.entries(pages).map(([key, history]) => [Number(key), history.snapshots[history.index]])),
+    canUndo: current.index > 0,
+    canRedo: current.index < current.snapshots.length - 1,
     addRedaction,
     deleteRedaction,
-    undo,
-    redo,
+    undo: () => moveHistory(-1),
+    redo: () => moveHistory(1),
     clearAll,
+    reset,
   }
 }
